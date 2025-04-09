@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalkulator ROI Amazon FBA</title>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <style>
+        /* Custom scrollbar for better dark theme integration */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937; /* gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4b5563; /* gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #6b7280; /* gray-500 */
+        }
+
+        /* --- Tooltip Styling --- */
+
+        /* Common appearance for all tooltips */
+        [title]:hover::after {
+            content: attr(title);
+            position: absolute;
+            /* Base appearance */
+            background-color: #374151; /* gray-700 */
+            color: #e5e7eb; /* gray-200 */
+            border: 1px solid #4b5563; /* gray-600 */
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.875rem; /* text-sm */
+            line-height: 1.4;
+            white-space: normal;
+            width: max-content;
+            max-width: 250px;
+            z-index: 10;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            /* Fade-in effect */
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease-in-out;
+
+            /* --- NEW: Unified Vertical Positioning --- */
+            bottom: 100%; /* Position bottom edge at the top of the parent */
+            margin-bottom: 5px; /* Add 5px space above the parent */
+            /* Remove vertical transform and margin-top from defaults */
+            transform: none;
+            margin-top: 0;
+        }
+
+        /* Default horizontal positioning (centered - for output column etc.) */
+        /* Applies only if NOT inside .input-container */
+        [title]:not(.input-container [title]):hover::after {
+             left: 50%; /* Center horizontally relative to parent */
+             transform: translateX(-50%); /* Adjust for tooltip's own width */
+        }
+
+        /* Add position: relative to the container for input tooltips */
+        .input-container {
+            position: relative; /* Needed for left: 0 alignment below */
+        }
+
+        /* Specific horizontal positioning for tooltips INSIDE .input-container (input column) */
+        .input-container [title]:hover::after {
+            left: 0; /* Align with the left edge of the container */
+            transform: none; /* Ensure no horizontal transform */
+        }
+
+        /* Show tooltip on hover */
+        [title]:hover:hover::after {
+             opacity: 1;
+        }
+        /* --- End Tooltip Styling --- */
+
+
+        /* Ensure chart canvas is responsive */
+        #roiChartContainer {
+            position: relative;
+            height: 40vh;
+            width: 100%;
+            max-width: 380px; /* Slightly smaller max width */
+            margin: auto;
+        }
+        @media (min-width: 768px) {
+             #roiChartContainer {
+                height: auto;
+                min-height: 280px; /* Adjusted min height */
+             }
+        }
+        /* Style radio buttons */
+        .radio-label {
+            display: inline-flex;
+            align-items: center;
+            cursor: pointer;
+            margin-right: 1rem;
+            font-size: 0.875rem;
+        }
+        .radio-input {
+            margin-right: 0.5rem;
+             accent-color: #4f46e5; /* indigo-600 */
+        }
+        /* Hide number input arrows */
+         input[type=number]::-webkit-inner-spin-button,
+         input[type=number]::-webkit-outer-spin-button {
+           -webkit-appearance: none;
+           margin: 0;
+         }
+         input[type=number] {
+           -moz-appearance: textfield; /* Firefox */
+         }
+         /* Input field error state */
+        .input-error {
+            border-color: #f87171 !important; /* red-400 */
+            box-shadow: 0 0 0 1px #f87171; /* Add a subtle glow */
+        }
+        /* Clearer focus state */
+        input:focus, select:focus {
+            border-color: #6366f1 !important; /* indigo-500 */
+            box-shadow: 0 0 0 2px #818cf8 !important; /* indigo-300 */
+            outline: none;
+        }
+        /* Slightly larger font for outputs */
+        .output-value {
+            font-size: 1.125rem; /* text-lg */
+        }
+        /* Styling for the new monthly profit output */
+        .monthly-profit-output {
+            font-size: 1.25rem; /* text-xl */
+            font-weight: 600; /* semibold */
+        }
+        .helper-output-value {
+             font-size: 0.875rem; /* text-sm */
+        }
+    </style>
+    <script>
+        // Tailwind dark mode configuration
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                }
+            }
+        }
+        // Apply dark mode immediately
+        document.documentElement.classList.add('dark');
+    </script>
+</head>
+<body class="bg-gray-900 text-gray-200 font-sans antialiased p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto">
+	    <img src="freedomprojectlogonobg.png"></img>
+        <h1 class="text-2xl md:text-3xl font-bold text-center mb-8 text-white">Kalkulator Zysku Amazon FBA</h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 md:gap-8">
+
+            
+            <div class="bg-gray-800 p-6 rounded-lg shadow-lg space-y-5 order-1">
+                <center><h2 class="text-xl font-semibold mb-4 text-white border-b border-gray-700 pb-2">Uzupełnij pola <br>(w walucie sprzedaży)</h2></center>
+
+                
+                <div class="input-container">
+                    <label for="sellingPriceGross" class="block text-sm font-medium text-gray-300 mb-1" title="Cena, jaką klient widzi na Amazon. Zawiera już podatek VAT. Podaj w walucie, w której sprzedajesz.">Cena sprzedaży na Amazon</label>
+                    <input type="text" id="sellingPriceGross" inputmode="decimal" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-500" placeholder="np. 39.99">
+                </div>
+
+                <div class="input-container">
+                    <label for="vatRate" class="block text-sm font-medium text-gray-300 mb-1" title="Podatek VAT obowiązujący w kraju, w którym sprzedajesz (np. w Niemczech często 19%). Wpisz samą liczbę.">Stawka VAT (%)</label>
+                    <input type="text" id="vatRate" inputmode="decimal" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-500" placeholder="np. 19">
+                </div>
+
+                <div class="input-container">
+                    <label for="unitProductCost" class="block text-sm font-medium text-gray-300 mb-1" title="Ile płacisz swojemu dostawcy (np. fabryce) za wyprodukowanie jednej sztuki produktu? Podaj kwotę bez VAT, w walucie sprzedaży.">Koszt produkcji sztuki produktu</label>
+                    <input type="text" id="unitProductCost" inputmode="decimal" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-500" placeholder="np. 10">
+                </div>
+
+                <div class="input-container">
+                    <label for="transportCostUnit" class="block text-sm font-medium text-gray-300 mb-1" title="Ile kosztuje wysłanie jednej sztuki produktu od dostawcy do magazynu Amazon? Obejmuje transport, opłaty spedycyjne itp. Podaj w walucie sprzedaży.">Koszt transportu sztuki produktu na Amazon</label>
+                    <input type="text" id="transportCostUnit" inputmode="decimal" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-500" placeholder="np. 1.5">
+                </div>
+
+                 <div class="input-container"> 
+                     <label class="block text-sm font-medium text-gray-300 mb-1" title="Opłata celna przy imporcie towaru spoza UE. Zwykle procent od kosztu produkcji. Możesz też podać stałą kwotę za sztukę (w walucie sprzedaży).">Stawka cła (tylko jeśli importujesz)</label>
+                     <div class="flex items-center space-x-4 mb-1">
+                         <label class="radio-label text-gray-400">
+                             <input type="radio" name="dutyType" value="percent" class="radio-input" checked> % według HS CODE:
+                         </label>
+                         <label class="radio-label text-gray-400">
+                             <input type="radio" name="dutyType" value="fixed" class="radio-input"> Kwota za sztukę:
+                         </label>
+                     </div>
+                     <div class="flex space-x-2">
+                         <input type="text" id="customsDutyPercent" inputmode="decimal" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-500" placeholder="np. 3">
+                         <input type="text" id="customsDutyFixed" inputmode="decimal" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-500 disabled:opacity-50" placeholder="np. 0.5" disabled>
+                     </div>
+                </div>
+
+                <div class="input-container">
+                    <label for="fbaFee" class="block text-sm font-medium text-gray-300 mb-1" title="Opłata, jaką Amazon pobiera za każdym razem, gdy sprzedasz produkt i wyśle go do klienta z ich magazynu (tzw. Fulfillment by Amazon). Sprawdź aktualne stawki Amazon dla Twojego produktu. Podaj w walucie sprzedaży.">FBA Fee</label>
+                    <input type="text" id="fbaFee" inputmode="decimal" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-500" placeholder="np. 5.20">
+                </div>
+
+                <div class="input-container"> 
+                    <label for="referralFeeCategory" class="block text-sm font-medium text-gray-300 mb-1" title="Prowizja dla Amazon od sprzedaży. Zależy od kategorii produktu. Wybierz kategorię lub podaj własną stawkę procentową.">Referall Fee (%)</label>
+                    <select id="referralFeeCategory" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white focus:ring-indigo-500 focus:border-indigo-500">
+                        <option value="15" title="Standardowa prowizja dla wielu popularnych kategorii.">Większość kategorii (15%)</option>
+                        <option value="8" title="Niższa prowizja dla elektroniki i komputerów.">Elektronika, Komputery (8%)</option>
+                        <option value="15" title="Prowizja dla produktów domowych i kuchennych.">Dom i Kuchnia (15%)</option>
+                        <option value="15" title="Prowizja dla odzieży, butów i akcesoriów.">Odzież i Akcesoria (15%)</option>
+                        <option value="15" title="Prowizja dla kosmetyków i produktów do pielęgnacji.">Uroda (15%)</option>
+                        <option value="15" title="Prowizja dla produktów zdrowotnych i higienicznych.">Zdrowie i Higiena (15%)</option>
+                        <option value="15" title="Prowizja dla zabawek i gier.">Zabawki i Gry (15%)</option>
+                        <option value="15" title="Prowizja dla artykułów sportowych i turystycznych.">Sport i Turystyka (15%)</option>
+                        <option value="12" title="Prowizja dla narzędzi i materiałów budowlanych.">Narzędzia i Remonty (12%)</option>
+                        <option value="7" title="Najniższa prowizja dla akcesoriów do urządzeń Amazon (np. etui na Kindle).">Akcesoria Amazon (7%)</option>
+                         <option value="custom">Inna stawka (wpisz poniżej)</option>
+                    </select>
+                     <input type="text" id="referralFeeCustomRate" inputmode="decimal" class="mt-2 w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-500 hidden" placeholder="Wpisz % np. 10">
+                </div>
+
+                 <div class="input-container">
+                     <label for="otherCostsUnit" class="block text-sm font-medium text-gray-300 mb-1" title="Wszelkie inne koszty związane z jedną sztuką produktu, np. koszt próbek, inspekcji jakości, opakowania specjalnego, zdjęć produktowych, opłat za magazynowanie (jeśli znasz). Podaj w walucie sprzedaży.">Inne koszty jednostkowe (np. magazynowanie, opakowanie produktu itd.)</label>
+                     <input type="text" id="otherCostsUnit" inputmode="decimal" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-500" placeholder="np. 0.5">
+                 </div>
+
+                <div class="input-container">
+                    <label for="marketingSpendRate" class="block text-sm font-medium text-gray-300 mb-1" title="Ile procent z wypracowanego zysku (przed odliczeniem marketingu) planujesz przeznaczyć na reklamy (np. Amazon PPC)? Wpisz samą liczbę.">Budżet na reklamę PPC (% zysku)</label>
+                     <div class="relative">
+                        <input type="text" id="marketingSpendRate" inputmode="decimal" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-500" placeholder="np. 10">
+                         <span class="absolute inset-y-0 right-0 pr-3 flex items-center text-sm text-gray-400">%</span>
+                    </div>
+                </div>
+
+                
+                <div class="input-container">
+                    <label for="monthlySalesUnits" class="block text-sm font-medium text-gray-300 mb-1" title="Ile sztuk tego produktu spodziewasz się sprzedać w ciągu miesiąca?">Szacowana miesięczna sprzedaż (szt.)</label>
+                    <input type="text" id="monthlySalesUnits" inputmode="decimal" class="w-full bg-gray-700 border border-gray-600 rounded-md p-2 text-white placeholder-gray-500" placeholder="np. 150">
+                </div>
+                
+
+                 <div class="pt-3">
+                     <button id="resetButton" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-2.5 px-4 rounded-md transition duration-150 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-red-500">
+                         WYCZYŚĆ POLA
+                     </button>
+                 </div>
+            </div>
+
+            
+            <div class="bg-gray-800 p-6 rounded-lg shadow-lg space-y-3 order-3 md:order-2">
+                <center><h2 class="text-xl font-semibold mb-4 text-white border-b border-gray-700 pb-2">Wyniki obliczeń <br>(w walucie sprzedaży)</h2></center>
+
+               
+                <div class="relative flex justify-between items-center" title="Twoja cena sprzedaży po odliczeniu podatku VAT. Tyle faktycznie otrzymujesz od klienta przed innymi kosztami.">
+                    <span class="text-gray-300">Cena sprzedaży netto:</span>
+                    <span id="netSellingPrice" class="font-semibold text-white output-value">0.00</span>
+                </div>
+                <hr class="border-gray-600">
+                 <div class="relative flex justify-between items-center" title="Całkowity koszt sprowadzenia 1 sztuki produktu do magazynu Amazon (Koszt produkcji + Transport + Cło).">
+                    <span class="text-gray-300">Koszt zakupu z dostawą:</span>
+                    <span id="landedCostUnit" class="font-semibold text-white output-value">0.00</span>
+                </div>
+                 <hr class="border-gray-600">
+                 <div class="relative flex justify-between items-center" title="Suma opłat pobieranych przez Amazon za sprzedaż i wysyłkę jednej sztuki (Prowizja + Opłata FBA).">
+                    <span class="text-gray-300">Opłaty Amazon (łącznie):</span>
+                    <span id="amazonFees" class="font-semibold text-white output-value">0.00</span>
+                </div>
+                <hr class="border-gray-600">
+                 <div class="relative flex justify-between items-center" title="Suma wszystkich kosztów związanych ze sprzedażą 1 sztuki (Koszt zakupu z dostawą + Opłaty Amazon + Inne koszty).">
+                    <span class="text-gray-300">Całkowity koszt 1 sztuki:</span>
+                    <span id="totalCostUnit" class="font-semibold text-white output-value">0.00</span>
+                </div>
+                <hr class="border-gray-600">
+                <div class="relative flex justify-between items-center" title="Zysk z 1 sztuki ZANIM odliczysz koszty reklamy (Cena Netto - Całkowity Koszt 1 Sztuki).">
+                    <span class="text-gray-300">Zysk (przed reklamą):</span>
+                    <span id="profitPreMarketing" class="font-semibold text-green-400 output-value">0.00</span>
+                </div>
+                 <hr class="border-gray-600">
+                 <div class="relative flex justify-between items-center" title="Twój zysk 'na czysto' z 1 sztuki PO odliczeniu kosztów reklamy.">
+                    <span class="text-gray-300">Zysk końcowy (po reklamie) / szt.:</span>
+                    <span id="profitPostMarketing" class="font-semibold text-green-300 output-value">0.00</span>
+                </div>
+                 <hr class="border-gray-600">
+                 <div class="relative flex justify-between items-center" title="Jaką część ceny netto stanowi Twój zysk końcowy? (Zysk Końcowy / Cena Netto * 100%).">
+                    <span class="text-gray-300">Marża/ACOS (%):</span>
+                    <span id="margin" class="font-semibold text-blue-400 output-value">0.0%</span>
+                </div>
+                 <hr class="border-gray-600">
+                 <div class="relative flex justify-between items-center" title="Ile procentowo zarabiasz w stosunku do kosztu zakupu produktu z dostawą? (Zysk Końcowy / Koszt Zakupu z Dostawą * 100%).">
+                    <span class="text-gray-300">Zwrot z inwestycji - ROI (%):</span>
+                    <span id="roi" class="font-semibold text-purple-400 output-value">0.0%</span>
+                </div>
+                
+
+               
+                <div class="relative mt-4 pt-4 border-t border-gray-600" title="Szacowany całkowity zysk w ciągu miesiąca (Zysk Końcowy / szt. * Szacowana Sprzedaż Miesięczna).">
+                    <div class="flex justify-between items-center">
+                        <span class="text-gray-300 text-lg">Szacowany miesięczny zysk:</span>
+                        <span id="totalMonthlyProfit" class="text-red-400 monthly-profit-output">0.00</span>
+                    </div>
+                </div>
+                
+
+                 
+                 <div class="text-xs text-gray-500 pt-3 space-y-1 mt-4 border-t border-gray-700">
+                     <div class="flex justify-between items-center">
+                         <span>(Kwota prowizji Amazon):</span>
+                         <span id="referralFeeAmount" class="helper-output-value">0.00</span>
+                     </div>
+                     <div class="flex justify-between items-center">
+                         <span>(Kwota cła):</span>
+                         <span id="dutyAmountUnit" class="helper-output-value">0.00</span>
+                     </div>
+                     <div class="flex justify-between items-center">
+                         <span>(Koszt reklamy):</span>
+                         <span id="marketingCostUnit" class="helper-output-value">0.00</span>
+                     </div>
+                     <div class="flex justify-between items-center">
+                         <span>(Użyta stawka prowizji):</span>
+                         <span id="usedReferralRate" class="helper-output-value">15.0%</span>
+                     </div>
+                     <div class="flex justify-between items-center">
+                         <span>(Użyta stawka VAT):</span>
+                         <span id="usedVatRate" class="helper-output-value">0.0%</span>
+                     </div>
+                 </div>
+            </div>
+
+            
+            <div class="bg-gray-800 p-6 rounded-lg shadow-lg flex flex-col items-center justify-center order-2 md:order-3">
+                <center><h2 class="text-xl font-semibold mb-4 text-white text-center border-b border-gray-700 pb-2 w-full">Co składa się na cenę <br>netto sztuki produktu?</h2></center>
+                <div id="roiChartContainer">
+                    <canvas id="roiChart"></canvas>
+                </div>
+                 <p id="chartError" class="text-red-400 text-center text-sm mt-4 hidden">Wykres pojawi się, gdy wpiszesz poprawne dane i zysk będzie dodatni.</p>
+            </div>
+
+        </div>
+         <p class="text-center text-gray-500 text-xs mt-8 px-4">
+             Ważne: Wprowadź wszystkie kwoty (cenę, koszty) w tej samej walucie, w której sprzedajesz produkt (np. tylko EUR, tylko USD, tylko PLN). Wyniki również będą pokazane w tej walucie. Kalkulator zakłada, że działasz jako firma zarejestrowana do VAT (VAT nie jest kosztem). Koszty magazynowania nie są uwzględnione - dodaj je do "Innych kosztów", jeśli są istotne.
+         </p>
+    </div>
+
+    <script>
+        // --- DOM Elements ---
+        const inputs = {
+            sellingPriceGross: document.getElementById('sellingPriceGross'),
+            vatRate: document.getElementById('vatRate'),
+            unitProductCost: document.getElementById('unitProductCost'),
+            transportCostUnit: document.getElementById('transportCostUnit'),
+            dutyTypeOptions: document.querySelectorAll('input[name="dutyType"]'),
+            customsDutyPercent: document.getElementById('customsDutyPercent'),
+            customsDutyFixed: document.getElementById('customsDutyFixed'),
+            fbaFee: document.getElementById('fbaFee'),
+            referralFeeCategory: document.getElementById('referralFeeCategory'),
+            referralFeeCustomRate: document.getElementById('referralFeeCustomRate'),
+            otherCostsUnit: document.getElementById('otherCostsUnit'),
+            marketingSpendRate: document.getElementById('marketingSpendRate'),
+            monthlySalesUnits: document.getElementById('monthlySalesUnits'), // New input
+        };
+
+        const outputs = {
+            netSellingPrice: document.getElementById('netSellingPrice'),
+            landedCostUnit: document.getElementById('landedCostUnit'),
+            amazonFees: document.getElementById('amazonFees'),
+            totalCostUnit: document.getElementById('totalCostUnit'),
+            profitPreMarketing: document.getElementById('profitPreMarketing'),
+            profitPostMarketing: document.getElementById('profitPostMarketing'),
+            margin: document.getElementById('margin'),
+            roi: document.getElementById('roi'),
+            totalMonthlyProfit: document.getElementById('totalMonthlyProfit'), // New output
+            referralFeeAmount: document.getElementById('referralFeeAmount'),
+            dutyAmountUnit: document.getElementById('dutyAmountUnit'),
+            marketingCostUnit: document.getElementById('marketingCostUnit'),
+            usedReferralRate: document.getElementById('usedReferralRate'),
+            usedVatRate: document.getElementById('usedVatRate'),
+        };
+
+        const resetButton = document.getElementById('resetButton');
+        const chartError = document.getElementById('chartError');
+        const chartCanvas = document.getElementById('roiChart');
+        let roiChart = null;
+
+        // --- Helper Functions ---
+
+        /**
+         * Parses a string value into a number. Handles commas/dots.
+         * Returns NaN for invalid input, 0 for empty.
+         */
+        function parseNumber(value) {
+            if (typeof value !== 'string') return NaN;
+            const trimmedValue = value.trim();
+            if (trimmedValue === '') return 0;
+            const cleanedValue = trimmedValue.replace(/,/g, '.').replace(/[^\d.]/g, '');
+            const parts = cleanedValue.split('.');
+            if (parts.length > 2) return NaN;
+            const number = parseFloat(cleanedValue);
+            return isNaN(number) ? NaN : number;
+        }
+
+        /**
+         * Formats a number for display (e.g., with locale-specific separators and 2 decimal places).
+         * Returns "N/A" if the value is not a valid number. Does NOT add currency symbol.
+         * @param {number} value - The number to format.
+         * @returns {string} Formatted number string or "N/A".
+         */
+        function formatNumberOutput(value) {
+            if (isNaN(value) || typeof value !== 'number') return 'N/A';
+            try {
+                 return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            } catch (e) {
+                 return value.toFixed(2);
+            }
+        }
+
+         /**
+         * Formats a number as a percentage string. Returns "N/A" if invalid.
+         */
+        function formatPercentage(value) {
+            if (isNaN(value) || typeof value !== 'number') return 'N/A';
+            return value.toFixed(1) + '%';
+        }
+
+        // --- Input Toggling Logic ---
+
+        /** Handles enabling/disabling duty inputs */
+         function handleDutyTypeChange() {
+             const selectedType = document.querySelector('input[name="dutyType"]:checked').value;
+             const isPercent = selectedType === 'percent';
+             inputs.customsDutyPercent.disabled = !isPercent;
+             inputs.customsDutyFixed.disabled = isPercent;
+             if (isPercent) {
+                 inputs.customsDutyFixed.value = '';
+                 inputs.customsDutyFixed.classList.remove('input-error');
+             } else {
+                 inputs.customsDutyPercent.value = '';
+                 inputs.customsDutyPercent.classList.remove('input-error');
+             }
+             calculateROI();
+         }
+
+        /** Handles showing/hiding custom referral rate input */
+        function handleReferralCategoryChange() {
+            const selectedCategory = inputs.referralFeeCategory.value;
+            const isCustom = selectedCategory === 'custom';
+            inputs.referralFeeCustomRate.classList.toggle('hidden', !isCustom);
+             if (!isCustom) {
+                 inputs.referralFeeCustomRate.value = '';
+                 inputs.referralFeeCustomRate.classList.remove('input-error');
+             }
+            calculateROI();
+        }
+
+
+        // --- Chart Initialization and Update ---
+
+        /** Initializes the pie chart */
+        function initializeChart() {
+            if (roiChart) {
+                 roiChart.destroy();
+            }
+            const ctx = chartCanvas.getContext('2d');
+            roiChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Koszt Produktu z Dostawą', 'Opłaty Amazon', 'Koszt Reklamy', 'Inne Koszty', 'Zysk Końcowy'],
+                    datasets: [{
+                        label: 'Podział Ceny Netto',
+                        data: [0, 0, 0, 0, 0],
+                        backgroundColor: [
+                            'rgb(239, 68, 68)',   // red-500
+                            'rgb(249, 115, 22)',  // orange-500
+                            'rgb(234, 179, 8)',   // yellow-500
+                            'rgb(96, 165, 250)',  // blue-400
+                            'rgb(34, 197, 94)'    // green-500
+                        ],
+                        borderColor: '#1f2937',
+                        borderWidth: 2,
+                        hoverOffset: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                             labels: { color: '#d1d5db', padding: 15, font: { size: 11 } }
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#e5e7eb',
+                            padding: 10,
+                            boxPadding: 4,
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1,
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) label += ': ';
+                                    const value = context.parsed;
+                                    if (value !== null && !isNaN(value)) {
+                                        label += formatNumberOutput(value);
+                                        const total = context.dataset.data.reduce((acc, val) => acc + (isNaN(val) ? 0 : val), 0);
+                                        if (total > 0) {
+                                            const percentage = ((value / total) * 100).toFixed(1);
+                                            label += ` (${percentage}%)`;
+                                        } else {
+                                            label += ` (0.0%)`;
+                                        }
+                                    } else {
+                                        label += 'N/A';
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+             chartCanvas.style.display = 'none';
+             chartError.style.display = 'block';
+        }
+
+        /** Updates the pie chart with new data or shows error */
+        function updateChart(landedCost, amazonFees, marketingCost, otherCosts, netProfit) {
+             const chartData = [
+                isNaN(landedCost) || landedCost < 0 ? 0 : landedCost,
+                isNaN(amazonFees) || amazonFees < 0 ? 0 : amazonFees,
+                isNaN(marketingCost) || marketingCost < 0 ? 0 : marketingCost,
+                isNaN(otherCosts) || otherCosts < 0 ? 0 : otherCosts,
+                isNaN(netProfit) || netProfit < 0 ? 0 : netProfit
+             ];
+             const isProfitValidAndPositive = !isNaN(netProfit) && netProfit > 0;
+             const areCostsValid = [landedCost, amazonFees, marketingCost, otherCosts].every(val => !isNaN(val) && val >= 0);
+
+             if (!roiChart) return;
+
+             if (areCostsValid && isProfitValidAndPositive) {
+                 chartCanvas.style.display = 'block';
+                 chartError.style.display = 'none';
+                 roiChart.data.datasets[0].data = chartData;
+                 roiChart.update();
+             } else {
+                 chartCanvas.style.display = 'none';
+                 chartError.style.display = 'block';
+                 roiChart.data.datasets[0].data = [0, 0, 0, 0, 0];
+                 roiChart.update();
+             }
+        }
+
+
+        // --- Main Calculation Logic ---
+
+        /** Calculates all metrics and updates UI, including validation */
+        function calculateROI() {
+            let isValid = true;
+
+            const getValidInput = (inputId) => {
+                const inputElement = inputs[inputId];
+                if (!inputElement) {
+                    console.error(`Input element with ID ${inputId} not found.`);
+                    isValid = false; return NaN;
+                }
+                if (inputElement.disabled) {
+                    inputElement.classList.remove('input-error');
+                    return 0;
+                }
+                const value = parseNumber(inputElement.value);
+                if (isNaN(value) || value < 0) {
+                    isValid = false;
+                    inputElement.classList.add('input-error');
+                    return NaN;
+                } else {
+                    inputElement.classList.remove('input-error');
+                    return value;
+                }
+            };
+
+            Object.values(inputs).forEach(el => {
+                if (el && el.nodeName === 'INPUT' && !el.disabled) {
+                     el.classList.remove('input-error');
+                } else if (el && el.nodeName === 'SELECT') {
+                     el.classList.remove('input-error');
+                }
+            });
+
+            const sellingPriceGross = getValidInput('sellingPriceGross');
+            const vatRate = getValidInput('vatRate');
+            const unitProductCost = getValidInput('unitProductCost');
+            const transportCostUnit = getValidInput('transportCostUnit');
+            const fbaFee = getValidInput('fbaFee');
+            const otherCostsUnit = getValidInput('otherCostsUnit');
+            const marketingSpendRate = getValidInput('marketingSpendRate');
+            const monthlySalesUnits = getValidInput('monthlySalesUnits');
+
+            const selectedDutyType = document.querySelector('input[name="dutyType"]:checked').value;
+            let dutyAmountUnit = NaN;
+            let customsDutyPercent = NaN;
+            let customsDutyFixed = NaN;
+
+             if (selectedDutyType === 'percent') {
+                 customsDutyPercent = getValidInput('customsDutyPercent');
+                 if (!isNaN(customsDutyPercent) && customsDutyPercent >= 0 && !isNaN(unitProductCost) && unitProductCost >= 0) {
+                     dutyAmountUnit = unitProductCost * (customsDutyPercent / 100);
+                 } else if (isNaN(customsDutyPercent) || customsDutyPercent < 0) {
+                     isValid = false;
+                 } else if (isNaN(unitProductCost) || unitProductCost < 0) {
+                     if (!inputs.unitProductCost.classList.contains('input-error')) {
+                         inputs.unitProductCost.classList.add('input-error');
+                     }
+                     isValid = false;
+                 }
+             } else {
+                 customsDutyFixed = getValidInput('customsDutyFixed');
+                 if (!isNaN(customsDutyFixed) && customsDutyFixed >= 0) {
+                     dutyAmountUnit = customsDutyFixed;
+                 } else {
+                    isValid = false;
+                 }
+             }
+             if (isNaN(dutyAmountUnit) || dutyAmountUnit < 0) {
+                 dutyAmountUnit = NaN;
+             }
+
+            const selectedReferralCategory = inputs.referralFeeCategory.value;
+            let referralFeeRate = NaN;
+            if (selectedReferralCategory === 'custom') {
+                referralFeeRate = getValidInput('referralFeeCustomRate');
+            } else {
+                referralFeeRate = parseNumber(selectedReferralCategory);
+                 if (isNaN(referralFeeRate) || referralFeeRate < 0) {
+                    console.error("Invalid built-in referral category value:", selectedReferralCategory);
+                    isValid = false;
+                    referralFeeRate = NaN;
+                 } else {
+                    inputs.referralFeeCustomRate.classList.remove('input-error');
+                 }
+            }
+             if (isNaN(referralFeeRate) || referralFeeRate < 0) {
+                 referralFeeRate = NaN;
+             }
+
+             if (!isValid) {
+                 resetOutputs(true);
+                 updateChart(NaN, NaN, NaN, NaN, NaN);
+                 return;
+             }
+
+            const vatMultiplier = 1 + (vatRate / 100);
+            const netSellingPrice = (vatMultiplier !== 0 && !isNaN(sellingPriceGross)) ? (sellingPriceGross / vatMultiplier) : NaN;
+            const referralFeeAmount = (!isNaN(netSellingPrice) && !isNaN(referralFeeRate)) ? netSellingPrice * (referralFeeRate / 100) : NaN;
+            const landedCostUnit = (!isNaN(unitProductCost) && !isNaN(transportCostUnit) && !isNaN(dutyAmountUnit))
+                                  ? unitProductCost + transportCostUnit + dutyAmountUnit : NaN;
+            const amazonFees = (!isNaN(referralFeeAmount) && !isNaN(fbaFee)) ? referralFeeAmount + fbaFee : NaN;
+            const totalCostUnit = (!isNaN(landedCostUnit) && !isNaN(amazonFees) && !isNaN(otherCostsUnit))
+                                 ? landedCostUnit + amazonFees + otherCostsUnit : NaN;
+            const profitPreMarketing = (!isNaN(netSellingPrice) && !isNaN(totalCostUnit)) ? netSellingPrice - totalCostUnit : NaN;
+            const marketingCostUnit = (!isNaN(profitPreMarketing) && profitPreMarketing > 0 && !isNaN(marketingSpendRate))
+                                     ? profitPreMarketing * (marketingSpendRate / 100) : 0;
+            const profitPostMarketing = (!isNaN(profitPreMarketing) && !isNaN(marketingCostUnit)) ? profitPreMarketing - marketingCostUnit : NaN;
+            const totalMonthlyProfit = (!isNaN(profitPostMarketing) && !isNaN(monthlySalesUnits)) ? profitPostMarketing * monthlySalesUnits : NaN;
+            const margin = (!isNaN(profitPostMarketing) && !isNaN(netSellingPrice) && netSellingPrice > 0)
+                          ? (profitPostMarketing / netSellingPrice * 100)
+                          : (!isNaN(profitPostMarketing) && profitPostMarketing === 0 ? 0 : NaN);
+            const roi = (!isNaN(profitPostMarketing) && !isNaN(landedCostUnit) && landedCostUnit > 0)
+                       ? (profitPostMarketing / landedCostUnit * 100)
+                       : (!isNaN(profitPostMarketing) && profitPostMarketing === 0 ? 0 : NaN);
+
+            const allCalculationsValid = [
+                netSellingPrice, landedCostUnit, amazonFees, totalCostUnit,
+                profitPreMarketing, marketingCostUnit, profitPostMarketing,
+                totalMonthlyProfit, margin, roi, referralFeeAmount, dutyAmountUnit // Include intermediate results used in helpers
+            ].every(val => !isNaN(val)); // Check all relevant calculated values
+
+            if (allCalculationsValid) {
+                outputs.netSellingPrice.textContent = formatNumberOutput(netSellingPrice);
+                outputs.landedCostUnit.textContent = formatNumberOutput(landedCostUnit);
+                outputs.amazonFees.textContent = formatNumberOutput(amazonFees);
+                outputs.totalCostUnit.textContent = formatNumberOutput(totalCostUnit);
+                outputs.profitPreMarketing.textContent = formatNumberOutput(profitPreMarketing);
+                outputs.profitPostMarketing.textContent = formatNumberOutput(profitPostMarketing);
+                outputs.margin.textContent = formatPercentage(margin);
+                outputs.roi.textContent = formatPercentage(roi);
+                outputs.totalMonthlyProfit.textContent = formatNumberOutput(totalMonthlyProfit);
+
+                outputs.referralFeeAmount.textContent = formatNumberOutput(referralFeeAmount);
+                outputs.dutyAmountUnit.textContent = formatNumberOutput(dutyAmountUnit);
+                outputs.marketingCostUnit.textContent = formatNumberOutput(marketingCostUnit);
+                outputs.usedReferralRate.textContent = formatPercentage(referralFeeRate);
+                outputs.usedVatRate.textContent = formatPercentage(vatRate);
+
+                outputs.profitPreMarketing.classList.toggle('text-red-400', profitPreMarketing < 0);
+                outputs.profitPreMarketing.classList.toggle('text-green-400', profitPreMarketing >= 0);
+                outputs.profitPostMarketing.classList.toggle('text-red-400', profitPostMarketing < 0);
+                outputs.profitPostMarketing.classList.toggle('text-green-300', profitPostMarketing >= 0);
+                outputs.totalMonthlyProfit.classList.toggle('text-red-400', totalMonthlyProfit < 0);
+                outputs.totalMonthlyProfit.classList.toggle('text-white', totalMonthlyProfit >= 0);
+
+                updateChart(landedCostUnit, amazonFees, marketingCostUnit, otherCostsUnit, profitPostMarketing);
+
+            } else {
+                resetOutputs(true);
+                updateChart(NaN, NaN, NaN, NaN, NaN);
+            }
+        }
+
+        /** Resets output fields to default (0 or N/A) */
+        function resetOutputs(isError = false) {
+            const defaultValueNumeric = isError ? 'N/A' : formatNumberOutput(0);
+            const defaultValuePercent = isError ? 'N/A' : formatPercentage(0);
+
+            outputs.netSellingPrice.textContent = defaultValueNumeric;
+            outputs.landedCostUnit.textContent = defaultValueNumeric;
+            outputs.amazonFees.textContent = defaultValueNumeric;
+            outputs.totalCostUnit.textContent = defaultValueNumeric;
+            outputs.profitPreMarketing.textContent = defaultValueNumeric;
+            outputs.profitPostMarketing.textContent = defaultValueNumeric;
+            outputs.margin.textContent = defaultValuePercent;
+            outputs.roi.textContent = defaultValuePercent;
+            outputs.totalMonthlyProfit.textContent = defaultValueNumeric;
+
+            outputs.referralFeeAmount.textContent = defaultValueNumeric;
+            outputs.dutyAmountUnit.textContent = defaultValueNumeric;
+            outputs.marketingCostUnit.textContent = defaultValueNumeric;
+
+            const currentVat = parseNumber(inputs.vatRate.value);
+            outputs.usedVatRate.textContent = formatPercentage(isNaN(currentVat) || currentVat < 0 ? 0 : currentVat);
+
+            let currentReferral = NaN;
+            const selectedCategory = inputs.referralFeeCategory.value;
+            if (selectedCategory === 'custom') {
+                currentReferral = parseNumber(inputs.referralFeeCustomRate.value);
+            } else {
+                currentReferral = parseNumber(selectedCategory);
+            }
+            outputs.usedReferralRate.textContent = formatPercentage(isNaN(currentReferral) || currentReferral < 0 ? 15 : currentReferral);
+
+             outputs.profitPreMarketing.classList.remove('text-red-400');
+             outputs.profitPreMarketing.classList.add('text-green-400');
+             outputs.profitPostMarketing.classList.remove('text-red-400');
+             outputs.profitPostMarketing.classList.add('text-green-300');
+             outputs.totalMonthlyProfit.classList.remove('text-red-400');
+             outputs.totalMonthlyProfit.classList.add('text-white');
+        }
+
+        /** Resets all input fields to defaults and clears errors */
+        function resetInputs() {
+            const inputElements = document.querySelectorAll('.input-container input[type="text"], .input-container select'); // Include select
+            inputElements.forEach(input => {
+                if (input.id !== 'referralFeeCategory') { // Don't reset select value, just clear errors
+                     input.value = '';
+                }
+                input.classList.remove('input-error');
+            });
+
+            // Reset duty selection and fields
+            document.querySelector('input[name="dutyType"][value="percent"]').checked = true;
+            inputs.customsDutyPercent.disabled = false;
+            inputs.customsDutyFixed.disabled = true;
+            inputs.customsDutyFixed.value = '';
+            inputs.customsDutyFixed.classList.remove('input-error');
+            inputs.customsDutyPercent.value = '';
+            inputs.customsDutyPercent.classList.remove('input-error');
+
+             // Reset referral selection and fields
+             inputs.referralFeeCategory.value = '15'; // Default to 15%
+             inputs.referralFeeCustomRate.value = '';
+             inputs.referralFeeCustomRate.classList.add('hidden');
+             inputs.referralFeeCustomRate.classList.remove('input-error');
+             inputs.referralFeeCategory.classList.remove('input-error');
+
+            calculateROI();
+            updateChart(NaN, NaN, NaN, NaN, NaN);
+        }
+
+        // --- Event Listeners ---
+        Object.values(inputs).forEach(element => {
+             if (NodeList.prototype.isPrototypeOf(element)) {
+                 element.forEach(radio => radio.addEventListener('change', calculateROI));
+             }
+             else if (element && (element.nodeName === 'INPUT' || element.nodeName === 'SELECT')) {
+                 const eventType = (element.nodeName === 'INPUT' && element.type === 'text') ? 'input' : 'change';
+                 element.addEventListener(eventType, calculateROI);
+             }
+        });
+
+        inputs.dutyTypeOptions.forEach(radio => radio.addEventListener('change', handleDutyTypeChange));
+        inputs.referralFeeCategory.addEventListener('change', handleReferralCategoryChange);
+        resetButton.addEventListener('click', resetInputs);
+
+        // --- Initial Setup ---
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeChart();
+            handleDutyTypeChange();
+            handleReferralCategoryChange();
+            // calculateROI() is called by the handlers above
+        });
+
+    </script>
+
+</body>
+</html>
